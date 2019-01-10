@@ -1,0 +1,262 @@
+##
+##
+##
+##
+#	RAYCAST RENDERING in AnyaBasic	#
+#	By John Jimenez (12/28/2017)	#
+##
+##
+##
+##
+
+
+start
+
+	type Vector
+	start
+		x = 0
+		y = 0
+	end
+	
+
+	VAR MAP_WIDTH = 8
+	VAR MAP_HEIGHT = 8
+	VAR MAP_DATA[] = {1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,1,1,2,2,2,0,3,0,1,1,0,0,2,0,3,0,1,1,2,0,0,0,3,0,1,1,2,0,3,0,3,0,1,1,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1}
+
+	FUNCTION GETMAP_POINT(MP_X, MP_Y)
+	start
+		VAR array_n = MP_X+MAP_WIDTH*MP_Y  #CONVERT 2D COORDINATES INTO 1D INDEX#
+	
+		if (array_n >= MAP_WIDTH*MAP_HEIGHT) then   #OUT OF BOUNDS#
+		start
+			print(MP_X)
+			print(MP_Y)
+		end
+		
+		return MAP_DATA[array_n]
+	end`	
+	
+	Vector PLAYER_POSITION
+	PLAYER_POSITION.x = 1.5
+	PLAYER_POSITION.y = 1.5
+			
+	VAR MOVESPEED = 0.2
+	VAR ROTSPEED = 0.2
+
+	VAR SCREEN_WIDTH = 512
+	VAR SCREEN_HEIGHT = 384
+	VAR SCREEN_HALF_HEIGHT = SCREEN_HEIGHT/2
+	VAR COLUMN_STEP = 1
+	VAR i = 0
+	VAR COLUMN_MUL = 1
+	VAR ROW_MUL = 0
+	VAR y1 = 0
+	VAR y2 = 0
+	VAR OUTLINE_WIDTH = 2
+	VAR FOG_STRENGTH = 1
+	VAR FOG_MUL = 0
+	VAR c = 0
+	
+	
+	VAR DIR_X = 1
+	VAR DIR_Y = 0
+	VAR PLANE_X = 0
+	VAR PLANE_Y = 0.66 # FOV #
+	VAR CAMERA_X = 0
+	VAR RAY_POS_X = 0
+	VAR RAY_POS_Y = 0
+	VAR RAY_DIR_X = 0
+	VAR RAY_DIR_Y = 0
+	VAR map_x = 0
+	VAR map_y = 0
+	
+	VAR SIDEDISTX = 0
+	VAR SIDEDISTY = 0
+	
+	VAR DDIST_X = 0
+	VAR DDIST_Y = 0
+	VAR PERPWALLDIST = 0
+	
+	VAR STEP_X = 0
+	VAR STEP_Y = 0
+	
+	VAR HIT = 0
+	VAR SIDE = 0
+	VAR f = 0
+	VAR s1 = 0
+	VAR s2 = 0
+	
+	FUNCTION GETRAY(RAY_i)
+	start
+	
+		CAMERA_X = 2 * RAY_i/(SCREEN_WIDTH*1.0)-1
+		RAY_POS_X = PLAYER_POSITION.x
+		RAY_POS_Y = PLAYER_POSITION.y
+		RAY_DIR_X = DIR_X + PLANE_X * CAMERA_X
+		RAY_DIR_Y = DIR_Y + PLANE_Y * CAMERA_X
+		map_x = INT(RAY_POS_X)
+		map_y = INT(RAY_POS_Y)
+		
+		SIDEDISTX = 0
+		SIDEDISTY = 0
+		
+		DDIST_X = SQRT(1 + (RAY_DIR_Y * RAY_DIR_Y) / (RAY_DIR_X * RAY_DIR_X))
+		DDIST_Y = SQRT(1 + (RAY_DIR_X * RAY_DIR_X) / (RAY_DIR_Y * RAY_DIR_Y))
+		PERPWALLDIST = 0
+		
+		STEP_X = 0
+		STEP_Y = 0
+		
+		HIT = 0
+		SIDE = 0
+		
+		if (RAY_DIR_X < 0) then
+		start
+			STEP_X = -1
+			SIDEDISTX = (RAY_POS_X - map_x) * DDIST_X
+		end
+		else
+		start
+			STEP_X = 1
+			SIDEDISTX = (map_x + 1.0 - RAY_POS_X) * DDIST_X
+		end
+		
+		if (RAY_DIR_Y < 0) then
+		start
+			STEP_Y = -1
+			SIDEDISTY = (RAY_POS_Y - map_y) * DDIST_Y
+		end
+		else
+		start
+			STEP_Y = 1
+			SIDEDISTY = (map_y + 1.0 - RAY_POS_Y) * DDIST_Y
+		end
+		
+		while (hit == 0)
+		start
+			if (SIDEDISTX < SIDEDISTY) then
+			start
+				SIDEDISTX = SIDEDISTX+DDIST_X
+				map_x = map_x+STEP_X
+				SIDE = 0
+			end
+			else
+			start
+				SIDEDISTY = SIDEDISTY+DDIST_Y
+				map_y = map_y+STEP_Y
+				SIDE = 1
+			end
+
+			c = GETMAP_POINT(map_x, map_y)
+			if (c > 0) then
+				hit = 1
+		end
+		
+		if (side == 0) then
+			PERPWALLDIST = (map_x - RAY_POS_X + (1 - STEP_X) / 2) / RAY_DIR_X
+		else
+			PERPWALLDIST = (map_y - RAY_POS_Y + (1 - STEP_Y) / 2) / RAY_DIR_Y
+		
+		f = int(SCREEN_HEIGHT/PERPWALLDIST)
+
+		s1 = 0
+		s2 = 0
+		
+		s1 = -f/2+SCREEN_HALF_HEIGHT
+		s2 = f/2+SCREEN_HALF_HEIGHT
+		
+		f = s1/SCREEN_HALF_HEIGHT
+
+		return f
+	end
+
+	print("RAYCAST DEMO in AnyaBasic by John Jimenez")
+	
+    Screen(SCREEN_WIDTH,SCREEN_HEIGHT)
+    while( !(KeyDown(1)) && !WindowClosed() ) 
+		start
+			cls()
+			
+			if (KEYDOWN(200)) then
+			start
+				if (GETMAP_POINT(INT(PLAYER_POSITION.x + DIR_X * MOVESPEED), int(PLAYER_POSITION.y)) <= 0) then
+					PLAYER_POSITION.x = PLAYER_POSITION.x + DIR_X * MOVESPEED
+				if (GETMAP_POINT(int(PLAYER_POSITION.x),INT(PLAYER_POSITION.y + DIR_Y * MOVESPEED)) <= 0) then
+					PLAYER_POSITION.y = PLAYER_POSITION.y + DIR_Y * MOVESPEED
+			end
+			
+			if (KEYDOWN(203)) then
+			start
+				VAR ODX = DIR_X
+				DIR_X = DIR_X * COS(-ROTSPEED) - DIR_Y * SIN(-ROTSPEED)
+				DIR_Y = ODX * SIN(-ROTSPEED) + DIR_Y * COS(-ROTSPEED)
+				VAR OPX = PLANE_X
+				PLANE_X = PLANE_X * COS(-ROTSPEED) - PLANE_Y * SIN(-ROTSPEED)
+				PLANE_Y = OPX * SIN(-ROTSPEED) + PLANE_Y * COS(-ROTSPEED)
+			end
+			
+			if (KEYDOWN(205)) then
+			start
+				VAR ODX = DIR_X
+				DIR_X = DIR_X * COS(ROTSPEED) - DIR_Y * SIN(ROTSPEED)
+				DIR_Y = ODX * SIN(ROTSPEED) + DIR_Y * COS(ROTSPEED)
+				VAR OPX = PLANE_X
+				PLANE_X = PLANE_X * COS(ROTSPEED) - PLANE_Y * SIN(ROTSPEED)
+				PLANE_Y = OPX * SIN(ROTSPEED) + PLANE_Y * COS(ROTSPEED)
+			end
+			
+			
+			
+			i = 0
+			repeat(0 to SCREEN_HALF_HEIGHT step 1)
+			start
+				ROW_MUL = i
+				setColor(0.3, 0.5, 0.7, 1)
+				drawline(0,ROW_MUL,SCREEN_WIDTH,ROW_MUL)  #draw sky#
+				
+				ROW_MUL = SCREEN_HALF_HEIGHT+i
+				FOG_MUL = ((ROW_MUL/SCREEN_HALF_HEIGHT))
+				setColor(0.5*FOG_MUL, 0.5*FOG_MUL, 0.5*FOG_MUL, 1)
+				drawline(0,ROW_MUL,SCREEN_WIDTH,ROW_MUL)  #draw ground#
+				
+				
+				i = i+1
+			end
+			
+			
+			i = 0
+			repeat(0 to SCREEN_WIDTH step COLUMN_STEP)
+			start
+				COLUMN_MUL = GETRAY(i)
+				FOG_MUL = 1-(FOG_STRENGTH*COLUMN_MUL)
+			
+				y1 = SCREEN_HALF_HEIGHT*COLUMN_MUL
+				y2 = SCREEN_HEIGHT-(SCREEN_HALF_HEIGHT*COLUMN_MUL)
+			
+				#wall outline#
+				setColor(0,0,0,1)
+				drawline(i, y1-OUTLINE_WIDTH, i, y1)
+				drawline(i, y2, i, y2+OUTLINE_WIDTH)
+			
+				if (c == 1) then
+					setColor(1*FOG_MUL,1*FOG_MUL,1*FOG_MUL,1)
+				else if (c == 2) then
+					setColor(1*FOG_MUL,0.2*FOG_MUL,0.2*FOG_MUL,1)
+				else if (c == 3) then
+					setColor(1*FOG_MUL,0.9*FOG_MUL,0.1*FOG_MUL,1)
+				else
+					setColor(0.1*FOG_MUL,1*FOG_MUL,0.1*FOG_MUL,1)
+					
+				
+				#draw main wall#
+				drawline(i,y1,i,y2)
+				
+				i = i+COLUMN_STEP
+			end
+			
+			delay(1)
+			screenFlip()
+		end 
+    exit(0)
+
+end
